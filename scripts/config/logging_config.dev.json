@@ -1,0 +1,60 @@
+{
+    "ignored-services": ["uvicorn.access", "math"],
+    "intercepted-loggers": ["uvicorn", "uvicorn.error", "uvicorn.access"],
+    "sinks": [
+        {
+            "name": "console",
+            "type": "console",
+            "level": "DEBUG",
+            "format": "<green>{time:YYYY-MM-DD HH:mm:ss} </green> <level><bg #106775> {level} </></> {message}\n",
+            "colorize": true,
+            "general": true
+        },
+        {
+            "name": "root",
+            "type": "file",
+            "path": "scripts/logs/root.log",
+            "level": "DEBUG",
+            "rotation": {
+                "when": "midnight",
+                "interval": 1,
+                "backupCount": 14,
+                "maxBytes": 104857600,
+                "use_gzip": true,
+                "encoding": "utf-8"
+            },
+            "format": "[{time}] [{level}] - {message}",
+            "general": true
+        },
+        {
+            "name": "uvicorn.access",
+            "type": "file",
+            "path": "scripts/logs/access.log",
+            "level": "INFO",
+            "rotation": {
+                "when": "midnight",
+                "interval": 1,
+                "backupCount": 14,
+                "maxBytes": 104857600,
+                "use_gzip": true,
+                "encoding": "utf-8"
+            },
+            "format": "[{time}] [{level}] - {message}"
+        },
+       {
+            "name": "math",
+            "type": "file",
+            "path": "scripts/logs/math.log",
+            "level": "DEBUG",
+            "rotation": {
+                "when": "midnight",
+                "interval": 1,
+                "backupCount": 14,
+                "maxBytes": 104857600,
+                "use_gzip": true,
+                "encoding": "utf-8"
+            },
+            "format": "[{time}] [{level}] [{extra[request_id]}] - Thread: [{extra[thread_name]}] - {message}"
+        }
+    ]
+}
