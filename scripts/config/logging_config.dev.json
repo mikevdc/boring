@@ -1,5 +1,5 @@
 {
-    "ignored-services": ["uvicorn.access", "math"],
+    "ignored-services": ["uvicorn.access", "math", "users"],
     "intercepted-loggers": ["uvicorn", "uvicorn.error", "uvicorn.access"],
     "sinks": [
         {
@@ -45,6 +45,21 @@
             "name": "math",
             "type": "file",
             "path": "scripts/logs/math.log",
+            "level": "DEBUG",
+            "rotation": {
+                "when": "midnight",
+                "interval": 1,
+                "backupCount": 14,
+                "maxBytes": 104857600,
+                "use_gzip": true,
+                "encoding": "utf-8"
+            },
+            "format": "[{time}] [{level}] [{extra[request_id]}] - Thread: [{extra[thread_name]}] - {message}"
+        },
+        {
+            "name": "users",
+            "type": "file",
+            "path": "scripts/logs/users.log",
             "level": "DEBUG",
             "rotation": {
                 "when": "midnight",
