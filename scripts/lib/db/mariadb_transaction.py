@@ -6,52 +6,75 @@ from scripts.lib.utils.configuration import Configuration
 
 
 _pool: mariadb.ConnectionPool = None
-_id: int = 0
+_id: int = 1
 _lock: threading.Lock = threading.Lock()
 
 
 class MariaDBTransaction():
     def __init__(self, logger: logging.Logger | None = None):
-        global _id
-        global _lock
+        global _id, _lock
         
         with _lock:
-            self.id = _id + 1
+            self.id = _id
             _id += 1
+
+        self.logger = logger or logging.getLogger(__name__)
+        self.logger.info(f"TRANSACTION {self.id}: Initialized.")
+
         self._connection = _get_connection()
         self.cursor = self._connection.cursor(dictionary=True) # Sets the results of que queries as dictionaries
-        self.logger = logger or logging.getLogger(__name__)
     
+        try:
+            timeout = Configuration.get()['MARIADB']['query_timeout']
+            self.cursor.execute(f"SET @@MAX_STATEMENT_TIME={timeout}")
+            self.logger.debug(f"TRANSACTION {self.id}: MAX_STATEMENT_TIME set to {timeout}s.")
 
-    def __enter__(self):
-        self.logger.info(f"TRANSACTION {self.id}: Initialized.")
-        self.cursor.execute(f"SET @@MAX_STATEMENT_TIME={Configuration.get()['MARIADB']['query_timeout']}", [])
-        return self
+        except Exception as e:
+            self.logger.error(f"TRANSACTION {self.id}: Critical error configuring session: {e}")
+            self.close()
+            raise
     
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.cursor.close()
-        if self._connection:
-            self._connection.close()
-        self.logger.info(f"TRANSACTION {self.id}: Closed.")
-
     
     def execute_query(self, sql, parameters):
-        self.logger.debug(f"Executing MariaDBTransaction [{self.id}]: {sql}")
+        self.logger.debug(f"Executing Query. MariaDBTransaction [{self.id}]:\n{sql}")
+        self.check_connections()
+        self.cursor.execute(sql, parameters)
+
+        return self.cursor.fetchall()
+    
+
+    def execute_insert(self, sql, parameters):
+        self.logger.debug(f"Executing Insert. MariaDBTransaction [{self.id}]:\n{sql}")
+        self.check_connections()
+        self.cursor.execute(sql, parameters)
+
+        return self.cursor.lastrowid
+
+
+    def check_connections(self):
         if self._connection is None:
             raise ConnectionError(f"Couldn't connect to MariaDB.")
         if self.cursor is None:
             raise ConnectionError("Couldn't execute the statement.")
 
-        self.cursor.execute(sql, parameters)
-
-        return self.cursor.fetchall()
-
 
     def close(self):
+        self.cursor.close()
         if self._connection:
             self._connection.close()
-            self._connection = None
+            self.logger.info(f"TRANSACTION {self.id}: Connection returned to pool.")
+
+
+    def commit(self):
+        self.logger.info(f"TRANSACTION {self.id}: Succeeded. Executing Commit.")
+        if self._connection:
+            self._connection.commit()
+
+
+    def rollback(self):
+        self.logger(f"TRANSACTION {self.id}: An exception occurred. Executing Rollback.")
+        if self._connection:
+            self._connection.rollback()
 
     
 def _get_connection():

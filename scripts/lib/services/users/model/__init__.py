@@ -1,1 +1,0 @@
-from scripts.lib.services.users.model.user import User
